@@ -21,6 +21,7 @@ package org.sonarqube.tests;
 
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
+import org.sonarqube.tests.ce.CeShutdownTest;
 import org.sonarqube.tests.ce.CeWorkersTest;
 import org.sonarqube.tests.qualityProfile.ActiveRuleEsResilienceTest;
 import org.sonarqube.tests.qualityProfile.BuiltInQualityProfilesNotificationTest;
@@ -63,7 +64,9 @@ import org.sonarqube.tests.user.UserEsResilienceTest;
   TelemetryUploadTest.class,
   TelemetryOptOutTest.class,
   // ce
+  CeShutdownTest.class,
   CeWorkersTest.class,
+
   // elasticsearch
   ElasticsearchSettingsTest.class
 })

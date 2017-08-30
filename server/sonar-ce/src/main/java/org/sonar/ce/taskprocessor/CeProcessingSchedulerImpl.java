@@ -43,12 +43,15 @@ public class CeProcessingSchedulerImpl implements CeProcessingScheduler, Startab
   private final long delayBetweenEnabledTasks;
   private final TimeUnit timeUnit;
   private final ChainingCallback[] chainingCallbacks;
+  private final EnabledCeWorkerController ceWorkerController;
 
   public CeProcessingSchedulerImpl(CeConfiguration ceConfiguration,
-    CeProcessingSchedulerExecutorService processingExecutorService, CeWorkerFactory ceCeWorkerFactory) {
+    CeProcessingSchedulerExecutorService processingExecutorService, CeWorkerFactory ceCeWorkerFactory,
+    EnabledCeWorkerController ceWorkerController) {
     this.executorService = processingExecutorService;
 
     this.delayBetweenEnabledTasks = ceConfiguration.getQueuePollingDelay();
+    this.ceWorkerController = ceWorkerController;
     this.timeUnit = MILLISECONDS;
 
     int threadWorkerCount = ceConfiguration.getWorkerMaxCount();
@@ -72,11 +75,64 @@ public class CeProcessingSchedulerImpl implements CeProcessingScheduler, Startab
     }
   }
 
+  /**
+   * This method is stopping all the workers giving them a 50s delay before killing them.
+   */
+  @Override
+  public void stopScheduling() {
+    LOG.debug("Stopping compute engine");
+    // Requesting all workers to stop
+    for (ChainingCallback chainingCallback : chainingCallbacks) {
+      chainingCallback.stop(false);
+    }
+
+    // Let 40s for worker to complete the task
+    int counter = 10;
+    int maxTimeInSec = 40;
+    while (counter > 0 && ceWorkerController.isAWorkerProcessing()) {
+      LOG.info("Waiting for worker to finish in-progress tasks.");
+      try {
+        Thread.sleep(1_000L * maxTimeInSec / 10);
+        counter--;
+      } catch (InterruptedException e) {
+        LOG.error("Grace period has been interrupted", e);
+        Thread.currentThread().interrupt();
+        break;
+      }
+    }
+
+    if (counter == 0) {
+      LOG.info("In-progress tasks did not finish during the grace period. Tasks will be stopped");
+    }
+
+    LOG.debug("Shutting down ExecutorService");
+    executorService.shutdown();
+
+    // Waiting for at most 5 secondes
+    LOG.debug("Waiting for shutdown");
+    try {
+      executorService.awaitTermination(5, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOG.debug("Interrupted exception, stopping ComputeEngine");
+    }
+
+    LOG.debug("Stopping callbacks");
+    // Stopping the tasks
+    for (ChainingCallback chainingCallback : chainingCallbacks) {
+      chainingCallback.stop(true);
+    }
+  }
+
   @Override
   public void stop() {
+    LOG.debug("Stopping callbacks");
+    // Requesting all workers to stop
     for (ChainingCallback chainingCallback : chainingCallbacks) {
-      chainingCallback.stop();
+      chainingCallback.stop(true);
     }
+    LOG.debug("Shutting down ExecutorService");
+    executorService.shutdown();
   }
 
   private class ChainingCallback implements FutureCallback<CeWorker.Result> {
@@ -149,10 +205,10 @@ public class CeProcessingSchedulerImpl implements CeProcessingScheduler, Startab
       return keepRunning.get();
     }
 
-    public void stop() {
+    public void stop(boolean interrupt) {
       this.keepRunning.set(false);
       if (workerFuture != null) {
-        workerFuture.cancel(false);
+        workerFuture.cancel(interrupt);
       }
     }
   }

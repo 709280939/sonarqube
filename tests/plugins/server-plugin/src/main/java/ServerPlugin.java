@@ -38,6 +38,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+import ce.CePauseStep;
 import java.util.Arrays;
 import java.util.List;
 import org.sonar.api.Properties;
@@ -86,6 +87,6 @@ import static org.sonar.api.PropertyType.USER_LOGIN;
 public class ServerPlugin extends SonarPlugin {
   public List getExtensions() {
     return Arrays.asList(
-      StartupCrash.class, TempFolderExtension.class);
+      StartupCrash.class, TempFolderExtension.class, CePauseStep.class);
   }
 }
