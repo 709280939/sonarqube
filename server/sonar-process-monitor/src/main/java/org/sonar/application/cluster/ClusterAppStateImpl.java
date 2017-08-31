@@ -35,13 +35,13 @@ import org.sonar.process.ProcessId;
 import static org.sonar.cluster.ClusterProperties.CLUSTER_LOCALENDPOINT;
 import static org.sonar.cluster.ClusterProperties.CLUSTER_MEMBERUUID;
 
-public class AppStateClusterImpl implements ClusterAppState {
-  private static Logger LOGGER = LoggerFactory.getLogger(AppStateClusterImpl.class);
+public class ClusterAppStateImpl implements ClusterAppState {
+  private static Logger LOGGER = LoggerFactory.getLogger(ClusterAppStateImpl.class);
 
   private final Map<ProcessId, Boolean> localProcesses = new EnumMap<>(ProcessId.class);
   private final HazelcastCluster hazelcastCluster;
 
-  public AppStateClusterImpl(AppSettings appSettings) {
+  public ClusterAppStateImpl(AppSettings appSettings) {
     ClusterProperties clusterProperties = new ClusterProperties(appSettings);
     clusterProperties.validate();
 
@@ -117,7 +117,7 @@ public class AppStateClusterImpl implements ClusterAppState {
    * @param logger
    */
   static void setLogger(Logger logger) {
-    AppStateClusterImpl.LOGGER = logger;
+    ClusterAppStateImpl.LOGGER = logger;
   }
 
 }

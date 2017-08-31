@@ -42,6 +42,7 @@ import org.sonar.application.process.EsCommand;
 import org.sonar.application.process.JavaCommand;
 import org.sonar.application.process.ProcessLauncher;
 import org.sonar.application.process.ProcessMonitor;
+import org.sonar.cluster.localclient.HazelcastClient;
 import org.sonar.process.ProcessId;
 
 import static java.util.Collections.synchronizedList;
@@ -74,6 +75,8 @@ public class SchedulerImplTest {
   private TestCommandFactory javaCommandFactory = new TestCommandFactory();
   private TestProcessLauncher processLauncher = new TestProcessLauncher();
   private TestAppState appState = new TestAppState();
+  private HazelcastClient hazelcastClient = mock(HazelcastClient.class);
+  private TestClusterAppState clusterAppState = new TestClusterAppState(hazelcastClient);
   private List<ProcessId> orderedStops = synchronizedList(new ArrayList<>());
 
   @After
@@ -83,7 +86,7 @@ public class SchedulerImplTest {
 
   @Test
   public void start_and_stop_sequence_of_ES_WEB_CE_in_order() throws Exception {
-    SchedulerImpl underTest = newScheduler();
+    SchedulerImpl underTest = newScheduler(false);
     underTest.schedule();
 
     // elasticsearch does not have preconditions to start
@@ -93,7 +96,7 @@ public class SchedulerImplTest {
 
     // elasticsearch becomes operational -> web leader is starting
     es.operational = true;
-    waitForAppStateOperational(ELASTICSEARCH);
+    waitForAppStateOperational(appState, ELASTICSEARCH);
     TestProcess web = processLauncher.waitForProcess(WEB_SERVER);
     assertThat(web.isAlive()).isTrue();
     assertThat(processLauncher.processes).hasSize(2);
@@ -101,7 +104,7 @@ public class SchedulerImplTest {
 
     // web becomes operational -> CE is starting
     web.operational = true;
-    waitForAppStateOperational(WEB_SERVER);
+    waitForAppStateOperational(appState, WEB_SERVER);
     TestProcess ce = processLauncher.waitForProcess(COMPUTE_ENGINE);
     assertThat(ce.isAlive()).isTrue();
     assertThat(processLauncher.processes).hasSize(3);
@@ -136,7 +139,7 @@ public class SchedulerImplTest {
 
   @Test
   public void all_processes_are_stopped_if_one_process_fails_to_start() throws Exception {
-    SchedulerImpl underTest = newScheduler();
+    SchedulerImpl underTest = newScheduler(false);
     processLauncher.makeStartupFail = COMPUTE_ENGINE;
 
     underTest.schedule();
@@ -224,17 +227,17 @@ public class SchedulerImplTest {
   @Test
   public void web_follower_starts_only_when_web_leader_is_operational() throws Exception {
     // leader takes the lock, so underTest won't get it
-    assertThat(appState.tryToLockWebLeader()).isTrue();
+    assertThat(clusterAppState.tryToLockWebLeader()).isTrue();
 
-    appState.setOperational(ProcessId.ELASTICSEARCH);
-    SchedulerImpl underTest = newScheduler();
+    clusterAppState.setOperational(ProcessId.ELASTICSEARCH);
+    SchedulerImpl underTest = newScheduler(true);
     underTest.schedule();
 
     processLauncher.waitForProcessAlive(ProcessId.ELASTICSEARCH);
     assertThat(processLauncher.processes).hasSize(1);
 
     // leader becomes operational -> follower can start
-    appState.setOperational(ProcessId.WEB_SERVER);
+    clusterAppState.setOperational(ProcessId.WEB_SERVER);
     processLauncher.waitForProcessAlive(WEB_SERVER);
 
     underTest.terminate();
@@ -244,14 +247,14 @@ public class SchedulerImplTest {
   public void web_server_waits_for_remote_elasticsearch_to_be_started_if_local_es_is_disabled() throws Exception {
     settings.set(CLUSTER_ENABLED, "true");
     settings.set(CLUSTER_SEARCH_DISABLED, "true");
-    SchedulerImpl underTest = newScheduler();
+    SchedulerImpl underTest = newScheduler(true);
     underTest.schedule();
 
     // WEB and CE wait for ES to be up
     assertThat(processLauncher.processes).isEmpty();
 
     // ES becomes operational on another node -> web leader can start
-    appState.setRemoteOperational(ProcessId.ELASTICSEARCH);
+    clusterAppState.setRemoteOperational(ProcessId.ELASTICSEARCH);
     processLauncher.waitForProcessAlive(WEB_SERVER);
     assertThat(processLauncher.processes).hasSize(1);
 
@@ -263,15 +266,15 @@ public class SchedulerImplTest {
     settings.set(CLUSTER_ENABLED, "true");
     settings.set(CLUSTER_SEARCH_DISABLED, "true");
     settings.set(CLUSTER_WEB_DISABLED, "true");
-    SchedulerImpl underTest = newScheduler();
+    SchedulerImpl underTest = newScheduler(true);
     underTest.schedule();
 
     // CE waits for ES and WEB leader to be up
     assertThat(processLauncher.processes).isEmpty();
 
     // ES and WEB leader become operational on another nodes -> CE can start
-    appState.setRemoteOperational(ProcessId.ELASTICSEARCH);
-    appState.setRemoteOperational(ProcessId.WEB_SERVER);
+    clusterAppState.setRemoteOperational(ProcessId.ELASTICSEARCH);
+    clusterAppState.setRemoteOperational(ProcessId.WEB_SERVER);
 
     processLauncher.waitForProcessAlive(COMPUTE_ENGINE);
     assertThat(processLauncher.processes).hasSize(1);
@@ -279,13 +282,13 @@ public class SchedulerImplTest {
     underTest.terminate();
   }
 
-  private SchedulerImpl newScheduler() {
-    return new SchedulerImpl(settings, appReloader, javaCommandFactory, processLauncher, appState)
+  private SchedulerImpl newScheduler(boolean clustered) {
+    return new SchedulerImpl(settings, appReloader, javaCommandFactory, processLauncher, clustered ? clusterAppState : appState)
       .setProcessWatcherDelayMs(1L);
   }
 
   private Scheduler startAll() throws InterruptedException {
-    SchedulerImpl scheduler = newScheduler();
+    SchedulerImpl scheduler = newScheduler(false);
     scheduler.schedule();
     processLauncher.waitForProcess(ELASTICSEARCH).operational = true;
     processLauncher.waitForProcess(WEB_SERVER).operational = true;
@@ -293,7 +296,7 @@ public class SchedulerImplTest {
     return scheduler;
   }
 
-  private void waitForAppStateOperational(ProcessId id) throws InterruptedException {
+  private static void waitForAppStateOperational(AppState appState, ProcessId id) throws InterruptedException {
     while (true) {
       if (appState.isOperational(id, true)) {
         return;
