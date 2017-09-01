@@ -121,7 +121,7 @@ public class TelemetryDaemonTest {
     underTest.start();
 
     ArgumentCaptor<String> jsonCaptor = ArgumentCaptor.forClass(String.class);
-    verify(client, timeout(1_000).atLeastOnce()).upload(jsonCaptor.capture());
+    verify(client, timeout(2_000).atLeastOnce()).upload(jsonCaptor.capture());
     String json = jsonCaptor.getValue();
     assertJson(json).isSimilarTo(getClass().getResource("telemetry-example.json"));
     assertJson(getClass().getResource("telemetry-example.json")).isSimilarTo(json);
