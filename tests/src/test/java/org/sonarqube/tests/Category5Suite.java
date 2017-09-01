@@ -26,7 +26,7 @@ import org.sonarqube.tests.ce.CeWorkersTest;
 import org.sonarqube.tests.qualityProfile.ActiveRuleEsResilienceTest;
 import org.sonarqube.tests.qualityProfile.BuiltInQualityProfilesNotificationTest;
 import org.sonarqube.tests.rule.RuleEsResilienceTest;
-import org.sonarqube.tests.serverSystem.ClusterTest;
+import org.sonarqube.tests.cluster.ClusterTest;
 import org.sonarqube.tests.serverSystem.RestartTest;
 import org.sonarqube.tests.serverSystem.ServerSystemRestartingOrchestrator;
 import org.sonarqube.tests.settings.ElasticsearchSettingsTest;
