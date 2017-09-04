@@ -146,7 +146,7 @@ public class ComponentIndexer implements ProjectIndexer, NeedAuthorizationIndexe
           bulk.add(newIndexRequest(toDocument(dto)));
         });
     }
-    bulk.stop();
+    bulk.stopAndFailOnError();
   }
 
   private void addProjectDeletionToBulkIndexer(BulkIndexer bulkIndexer, String projectUuid) {
@@ -160,7 +160,7 @@ public class ComponentIndexer implements ProjectIndexer, NeedAuthorizationIndexe
     BulkIndexer bulk = new BulkIndexer(esClient, INDEX_TYPE_COMPONENT, Size.REGULAR);
     bulk.start();
     disabledComponentUuids.forEach(uuid -> bulk.addDeletion(INDEX_TYPE_COMPONENT, uuid, projectUuid));
-    bulk.stop();
+    bulk.stopAndFailOnError();
   }
 
   @VisibleForTesting
@@ -171,7 +171,7 @@ public class ComponentIndexer implements ProjectIndexer, NeedAuthorizationIndexe
       .map(ComponentIndexer::toDocument)
       .map(ComponentIndexer::newIndexRequest)
       .forEach(bulk::add);
-    bulk.stop();
+    bulk.stopAndFailOnError();
   }
 
   private static IndexRequest newIndexRequest(ComponentDoc doc) {

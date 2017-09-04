@@ -87,7 +87,7 @@ public class RuleIndexer implements ResilientIndexer {
         );
       }
 
-      bulk.stop();
+      bulk.stopAndFailOnError();
     }
   }
 

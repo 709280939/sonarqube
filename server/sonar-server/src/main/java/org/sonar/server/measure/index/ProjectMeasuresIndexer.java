@@ -144,7 +144,7 @@ public class ProjectMeasuresIndexer implements ProjectIndexer, NeedAuthorization
         ProjectMeasures doc = rowIt.next();
         bulkIndexer.add(newIndexRequest(toProjectMeasuresDoc(doc)));
       }
-      bulkIndexer.stop();
+      bulkIndexer.stopAndFailOnError();
     }
   }
 

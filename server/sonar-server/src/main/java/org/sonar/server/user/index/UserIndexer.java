@@ -73,7 +73,7 @@ public class UserIndexer implements ResilientIndexer {
         // only index requests, no deletion requests.
         // Deactivated users are not deleted but updated.
         u -> bulkIndexer.add(newIndexRequest(u, organizationUuidsByLogin)));
-      bulkIndexer.stop();
+      bulkIndexer.stopAndFailOnError();
     }
   }
 

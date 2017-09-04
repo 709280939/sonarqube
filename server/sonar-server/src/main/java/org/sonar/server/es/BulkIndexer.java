@@ -118,6 +118,12 @@ public class BulkIndexer {
     return result;
   }
 
+  public void stopAndFailOnError() {
+    if (stop().getFailures() > 0) {
+      throw new IllegalStateException(format("%d failures during indexation", result.getFailures()));
+    }
+  }
+
   public void add(IndexRequest request) {
     result.incrementRequests();
     bulkProcessor.add(request);

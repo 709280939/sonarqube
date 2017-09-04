@@ -45,7 +45,6 @@ import org.sonar.server.permission.index.PermissionIndexerDao.Dto;
 import static java.util.Collections.emptyList;
 import static org.sonar.core.util.stream.MoreCollectors.toArrayList;
 import static org.sonar.core.util.stream.MoreCollectors.toSet;
-import static org.sonar.server.es.DefaultIndexSettings.REFRESH_IMMEDIATE;
 
 /**
  * Populates the types "authorization" of each index requiring project
@@ -142,7 +141,7 @@ public class PermissionIndexer implements ProjectIndexer {
         .map(dto -> newIndexRequest(dto, indexType))
         .forEach(bulkIndexer::add);
 
-      bulkIndexer.stop();
+      bulkIndexer.stopAndFailOnError();
     });
   }
 

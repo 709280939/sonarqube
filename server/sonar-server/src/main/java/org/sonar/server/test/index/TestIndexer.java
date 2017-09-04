@@ -74,7 +74,7 @@ public class TestIndexer implements ProjectIndexer {
       BulkIndexer bulkIndexer = new BulkIndexer(esClient, TestIndexDefinition.INDEX_TYPE_TEST, Size.LARGE);
       bulkIndexer.start();
       addTestsToBulkIndexer(rowIt, bulkIndexer);
-      bulkIndexer.stop();
+      bulkIndexer.stopAndFailOnError();
     }
   }
 
@@ -87,7 +87,7 @@ public class TestIndexer implements ProjectIndexer {
          TestResultSetIterator rowIt = TestResultSetIterator.create(dbClient, dbSession, projectUuid)) {
       addTestsToBulkIndexer(rowIt, bulkIndexer);
     }
-    bulkIndexer.stop();
+    bulkIndexer.stopAndFailOnError();
   }
 
   @Override

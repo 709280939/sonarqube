@@ -76,7 +76,7 @@ public class ActiveRuleIndexer implements ResilientIndexer {
       BulkIndexer bulkIndexer = createBulkIndexer(Size.LARGE, IndexingListener.NOOP);
       bulkIndexer.start();
       dbClient.activeRuleDao().scrollAllForIndexing(dbSession, ar -> bulkIndexer.add(newIndexRequest(ar)));
-      bulkIndexer.stop();
+      bulkIndexer.stopAndFailOnError();
     }
   }
 

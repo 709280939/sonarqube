@@ -52,7 +52,6 @@ import org.sonar.server.permission.index.NeedAuthorizationIndexer;
 import static java.util.Collections.emptyList;
 import static org.elasticsearch.index.query.QueryBuilders.boolQuery;
 import static org.elasticsearch.index.query.QueryBuilders.termQuery;
-import static org.sonar.server.es.DefaultIndexSettings.REFRESH_NONE;
 import static org.sonar.server.issue.index.IssueIndexDefinition.FIELD_ISSUE_PROJECT_UUID;
 import static org.sonar.server.issue.index.IssueIndexDefinition.INDEX_TYPE_ISSUE;
 
@@ -165,6 +164,9 @@ public class IssueIndexer implements ProjectIndexer, NeedAuthorizationIndexer {
     IndexingResult result = new IndexingResult();
     result.add(doIndexIssueItems(dbSession, itemsByIssueKey));
     result.add(doIndexProjectItems(dbSession, itemsByProjectKey));
+    if (result.getFailures() > 0) {
+      throw new IllegalStateException("Error");
+    }
     return result;
   }
 
@@ -230,7 +232,7 @@ public class IssueIndexer implements ProjectIndexer, NeedAuthorizationIndexer {
     BulkIndexer bulkIndexer = createBulkIndexer(Size.REGULAR, IndexingListener.NOOP);
     bulkIndexer.start();
     issueKeys.forEach(issueKey -> bulkIndexer.addDeletion(INDEX_TYPE_ISSUE, issueKey, projectUuid));
-    bulkIndexer.stop();
+    bulkIndexer.stopAndFailOnError();
   }
 
   @VisibleForTesting
@@ -245,7 +247,7 @@ public class IssueIndexer implements ProjectIndexer, NeedAuthorizationIndexer {
       IssueDoc issue = issues.next();
       bulk.add(newIndexRequest(issue));
     }
-    bulk.stop();
+    bulk.stopAndFailOnError();
   }
 
   private IndexRequest newIndexRequest(IssueDoc issue) {

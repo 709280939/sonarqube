@@ -91,7 +91,7 @@ public class ViewIndexer implements StartupIndexer {
     BulkIndexer bulk = new BulkIndexer(esClient, ViewIndexDefinition.INDEX_TYPE_VIEW, Size.REGULAR);
     bulk.start();
     doIndex(bulk, viewDoc, true);
-    bulk.stop();
+    bulk.stopAndFailOnError();
   }
 
   private void index(DbSession dbSession, Map<String, String> viewAndProjectViewUuidMap, boolean needClearCache, Size bulkSize) {
@@ -104,7 +104,7 @@ public class ViewIndexer implements StartupIndexer {
         .setUuid(viewUuid)
         .setProjects(projects), needClearCache);
     }
-    bulk.stop();
+    bulk.stopAndFailOnError();
   }
 
   private void doIndex(BulkIndexer bulk, ViewDoc viewDoc, boolean needClearCache) {

@@ -51,7 +51,7 @@ public class BulkIndexerTest {
   public void index_nothing() {
     BulkIndexer indexer = new BulkIndexer(esTester.client(), INDEX_TYPE_FAKE, Size.REGULAR);
     indexer.start();
-    indexer.stop();
+    indexer.stopAndFailOnError();
 
     assertThat(count()).isEqualTo(0);
   }
@@ -67,7 +67,7 @@ public class BulkIndexerTest {
     assertThat(count()).isEqualTo(0);
 
     // send remaining requests
-    indexer.stop();
+    indexer.stopAndFailOnError();
     assertThat(count()).isEqualTo(2);
   }
 
@@ -120,7 +120,7 @@ public class BulkIndexerTest {
     BulkIndexer indexer = new BulkIndexer(esTester.client(), INDEX_TYPE_FAKE, Size.REGULAR, listener);
     indexer.start();
     indexer.addDeletion(INDEX_TYPE_FAKE, "foo");
-    indexer.stop();
+    indexer.stopAndFailOnError();
     assertThat(listener.calledDocIds)
       .containsExactlyInAnyOrder(new DocId(INDEX_TYPE_FAKE, "foo"));
     assertThat(listener.calledResult.getSuccess()).isEqualTo(1);
@@ -134,7 +134,7 @@ public class BulkIndexerTest {
     indexer.start();
     indexer.add(newIndexRequestWithDocId("foo"));
     indexer.add(newIndexRequestWithDocId("bar"));
-    indexer.stop();
+    indexer.stopAndFailOnError();
     assertThat(listener.calledDocIds)
       .containsExactlyInAnyOrder(new DocId(INDEX_TYPE_FAKE, "foo"), new DocId(INDEX_TYPE_FAKE, "bar"));
     assertThat(listener.calledResult.getSuccess()).isEqualTo(2);
@@ -148,7 +148,7 @@ public class BulkIndexerTest {
     indexer.start();
     indexer.add(newIndexRequestWithDocId("foo"));
     indexer.add(new IndexRequest("index_does_not_exist", "index_does_not_exist", "bar").source(emptyMap()));
-    indexer.stop();
+    indexer.stopAndFailOnError();
     assertThat(listener.calledDocIds).containsExactly(new DocId(INDEX_TYPE_FAKE, "foo"));
     assertThat(listener.calledResult.getSuccess()).isEqualTo(1);
     assertThat(listener.calledResult.getTotal()).isEqualTo(2);
