@@ -19,23 +19,25 @@
  */
 package org.sonar.server.platform.ws;
 
-import org.sonar.core.platform.Module;
-import org.sonar.server.health.DbConnectionNodeCheck;
-import org.sonar.server.health.EsStatusNodeCheck;
-import org.sonar.server.health.HealthCheckerImpl;
-import org.sonar.server.health.WebServerSafemodeNodeCheck;
+import org.sonar.api.server.ws.Request;
+import org.sonar.api.server.ws.Response;
+import org.sonar.api.server.ws.WebService;
+import org.sonar.server.ws.WsUtils;
 
-public class SafeModeHealthActionModule extends Module {
+public class SafemodeHealthAction implements SystemWsAction {
+  private final HealthActionSupport support;
+
+  public SafemodeHealthAction(HealthActionSupport support) {
+    this.support = support;
+  }
+
   @Override
-  protected void configureModule() {
-    add(
-      // NodeHealthCheck implementations
-      WebServerSafemodeNodeCheck.class,
-      DbConnectionNodeCheck.class,
-      EsStatusNodeCheck.class,
+  public void define(WebService.NewController controller) {
+    support.define(controller, this);
+  }
 
-      HealthCheckerImpl.class,
-      HealthActionSupport.class,
-      SafemodeHealthAction.class);
+  @Override
+  public void handle(Request request, Response response) throws Exception {
+    WsUtils.writeProtobuf(support.checkNodeHealth(), request, response);
   }
 }
